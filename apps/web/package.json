@@ -21,6 +21,7 @@
     "next": "15.5.25",
     "react": "19.0.0",
     "react-dom": "19.0.0",
+    "reflect-metadata": "^0.2.2",
     "tailwind-merge": "^2.6.0"
   },
   "devDependencies": {
