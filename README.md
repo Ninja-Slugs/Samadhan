@@ -45,9 +45,42 @@ Later phases add university matching, innovation challenges, student and faculty
 
 ## Project Status
 
-The project is currently in the documentation and planning stage. The product and engineering foundations are documented, while the application, database migrations, CI pipeline, and deployment configuration are still to be implemented.
+The monorepo scaffold and the MVP civic-loop vertical slice are implemented and building green. A citizen can register, verify their email, file a report, and follow it through AI triage, government review, transparent prioritisation and status updates on a tracking timeline; an admin can work the review queue with verify / reject / request-info decisions, overrides and an audit trail.
 
 Follow the [progress tracker](docs/PROGRESS.md) for the current state and the [roadmap](docs/ROADMAP.md) for planned delivery.
+
+## Quick Start
+
+```bash
+cp .env.example .env            # set JWT_ACCESS_SECRET and DATABASE_URL
+docker compose up -d postgres   # or point DATABASE_URL at any Postgres 16
+npm install
+npm run db:migrate              # apply Prisma migrations
+npm run db:seed                 # load the category taxonomy + sample universities
+npm run dev                     # http://localhost:3000
+```
+
+Promote your first admin after signing up and verifying:
+`UPDATE users SET role = 'admin' WHERE email = '<you>';`
+
+Without `AI_API_KEY` the platform runs on the deterministic rule-based
+analyzer; without `RESEND_API_KEY` verification codes are printed to the
+server console.
+
+## Repository Layout
+
+```
+apps/web/                 Next.js App Router - UI + /api/v1 route handlers
+  src/app/                pages ((app) = session-gated) and API routes
+  src/server/<domain>/    domain services + DTOs (auth, problems, admin,
+                          priority, ai, matching, notifications)
+  src/lib/                browser API client, session, shared types
+packages/database/        Prisma schema, migrations, dev seed
+docs/                     product spec, architecture, ADRs, roadmap
+```
+
+See [MASTER_INDEX.md](MASTER_INDEX.md) for a fuller map and
+[docs/adr/](docs/adr/) for the decisions behind this shape.
 
 ## Documentation
 
@@ -62,9 +95,20 @@ The [documentation index](docs/README.md) explains where to start. The main refe
 - [Data and security](docs/DATA_AND_SECURITY.md): authorization, RLS, uploads, audit, and privacy
 - [Contributing](docs/CONTRIBUTING.md): development and review workflow
 
-## Planned Technical Direction
+## Technical Direction
 
-The documented architecture uses a web client and API service backed by Supabase Auth, Postgres, Row-Level Security, Storage, and server-side integrations for AI, maps, and notifications. The repository will use a monorepo structure with shared types, validation, UI, and configuration packages.
+An npm-workspaces monorepo with a single deployable Next.js app: the App
+Router serves both the UI and the `/api/v1` route handlers, backed by
+PostgreSQL through Prisma (`packages/database`), with server-side adapters
+for the AI provider, mail and (planned) Supabase Storage and Realtime.
+Authentication is custom email + OTP with a short-lived access JWT and an
+opaque refresh token; authorization is enforced in the API service layer.
+AI is advisory only, with a deterministic rule-based fallback so no feature
+depends on a model being reachable. Deployment targets a Hostinger Node.js
+app running the standalone build, with migrations applied from CI.
+
+These choices, and where they deviate from the specification above, are
+recorded in [docs/adr/](docs/adr/).
 
 ## Contributing
 
