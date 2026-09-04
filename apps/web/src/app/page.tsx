@@ -23,25 +23,40 @@ const NAV = [
   { label: "Report a Problem", href: "/signup" },
   { label: "Explore", href: "/challenges" },
   { label: "Our Partners", href: "/challenges" },
-  { label: "Success Stories", href: "/challenges" },
   { label: "About", href: "/challenges" }
 ];
 
-const SIGN_IN_TABS = [
-  { key: "citizen", label: "Citizen" },
-  { key: "university_admin", label: "University" },
-  { key: "faculty", label: "Government" },
-  { key: "student", label: "Student" },
-  { key: "industry", label: "Partner" }
-];
-
 const AUDIENCES = [
-  { icon: Users, title: "For Citizens", copy: "Report & Track" },
-  { icon: Landmark, title: "For Government", copy: "Monitor & Collaborate" },
-  { icon: GraduationCap, title: "For Universities", copy: "Innovate & Solve" },
-  { icon: Users, title: "For Students", copy: "Build for a Better Tomorrow" },
-  { icon: Factory, title: "For Industry", copy: "Partner & Support" },
-  { icon: Leaf, title: "For NGOs", copy: "Create Social Impact" }
+  {
+    icon: Users,
+    title: "For Citizens",
+    copy: "Report & Track",
+    bg: "bg-rose-100 text-rose-600"
+  },
+  {
+    icon: Landmark,
+    title: "For Government",
+    copy: "Monitor & Collaborate",
+    bg: "bg-emerald-100 text-emerald-700"
+  },
+  {
+    icon: GraduationCap,
+    title: "For Universities",
+    copy: "Innovate & Solve",
+    bg: "bg-sky-100 text-sky-700"
+  },
+  {
+    icon: Users,
+    title: "For Students",
+    copy: "Build for a Better Tomorrow",
+    bg: "bg-amber-100 text-amber-700"
+  },
+  {
+    icon: Factory,
+    title: "For Industry",
+    copy: "Partner & Support",
+    bg: "bg-violet-100 text-violet-700"
+  }
 ];
 
 const STEPS = [
@@ -101,23 +116,53 @@ function compact(value: number): string {
   return value.toLocaleString("en-IN");
 }
 
-function Tricolor() {
+function HeroBackdrop() {
   return (
-    <span
+    <svg
       aria-hidden
-      className="pointer-events-none absolute top-0 left-0 h-40 w-72 overflow-hidden"
+      className="absolute inset-0 h-full w-full"
+      preserveAspectRatio="xMidYMax slice"
+      viewBox="0 0 1200 600"
     >
-      <span className="absolute -top-16 -left-24 h-40 w-[28rem] -rotate-12 rounded-full bg-[var(--saffron)]" />
-      <span className="absolute -top-8 -left-24 h-40 w-[28rem] -rotate-12 rounded-full bg-white" />
-      <span className="absolute top-0 -left-24 h-40 w-[28rem] -rotate-12 rounded-full bg-[var(--accent)]" />
-    </span>
+      <defs>
+        <linearGradient id="sky" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor="#bfe3f0" />
+          <stop offset="55%" stopColor="#8fd0c9" />
+          <stop offset="100%" stopColor="#3f8f6e" />
+        </linearGradient>
+        <linearGradient id="hillFar" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor="#3f7d5e" />
+          <stop offset="100%" stopColor="#2a5f45" />
+        </linearGradient>
+        <linearGradient id="hillNear" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor="#245239" />
+          <stop offset="100%" stopColor="#123526" />
+        </linearGradient>
+        <linearGradient id="falls" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.95" />
+          <stop offset="100%" stopColor="#ffffff" stopOpacity="0.35" />
+        </linearGradient>
+      </defs>
+      <rect fill="url(#sky)" height="600" width="1200" />
+      <path
+        d="M0,260 C220,190 420,300 640,250 C860,200 1040,260 1200,220 L1200,600 L0,600 Z"
+        fill="url(#hillFar)"
+        opacity="0.85"
+      />
+      <path
+        d="M780,120 C795,220 770,300 800,420 C815,470 785,500 810,600 L860,600 C845,500 875,470 855,420 C830,300 855,220 840,120 Z"
+        fill="url(#falls)"
+      />
+      <path
+        d="M0,340 C260,300 500,400 760,330 C960,280 1090,360 1200,330 L1200,600 L0,600 Z"
+        fill="url(#hillNear)"
+      />
+    </svg>
   );
 }
 
 export default function LandingPage() {
   const [stats, setStats] = useState<Stats>(PLACEHOLDER_STATS);
-  const [role, setRole] = useState("citizen");
-  const [contact, setContact] = useState("");
 
   useEffect(() => {
     apiRequest<Stats>("/stats", { auth: false })
@@ -146,18 +191,22 @@ export default function LandingPage() {
     {
       value: compact(stats.problemsReported),
       label: "Problems Reported",
-      tone: "ink"
+      tone: "text-[var(--ink)]"
     },
-    { value: compact(stats.inProgress), label: "In Progress", tone: "saffron" },
+    {
+      value: compact(stats.inProgress),
+      label: "In Progress",
+      tone: "text-[var(--saffron)]"
+    },
     {
       value: compact(stats.solutionsDeployed),
       label: "Solutions Deployed",
-      tone: "green"
+      tone: "text-[var(--accent)]"
     },
     {
       value: compact(stats.citizensImpacted),
       label: "Citizens Impacted",
-      tone: "ink"
+      tone: "text-[var(--ink)]"
     }
   ];
 
@@ -252,139 +301,60 @@ export default function LandingPage() {
 
       <main id="main">
         {/* Hero */}
-        <section className="relative overflow-hidden bg-gradient-to-br from-[#0a7d3f] via-[#0c6f3c] to-[#08312a] text-white">
-          <Tricolor />
+        <section className="relative isolate min-h-[420px] overflow-hidden text-white">
+          <HeroBackdrop />
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_80%_at_80%_0%,rgba(255,255,255,0.14),transparent)]"
+            className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/25 to-transparent"
           />
-          <div className="relative mx-auto grid max-w-7xl items-start gap-10 px-5 py-14 lg:grid-cols-[1.15fr_0.85fr] lg:py-16">
-            <div>
-              <h1 className="text-4xl leading-[1.05] font-black tracking-tight sm:text-5xl">
-                A Stronger{" "}
-                <span className="text-[var(--saffron)]">Jharkhand</span>
-                <br />
-                Through Solutions
-              </h1>
-              <p className="mt-5 max-w-lg text-base text-white/85">
-                An AI-powered platform that connects citizens, government,
-                universities, industry and students to solve real-world
-                problems.
-              </p>
-              <div className="mt-7 flex flex-wrap gap-3">
-                <Link
-                  className="flex items-center gap-2 rounded-md bg-[var(--saffron)] px-6 py-3 text-sm font-bold text-white shadow-lg hover:bg-[var(--saffron-strong)]"
-                  href="/signup"
-                >
-                  Report a Problem <ArrowRight className="h-4 w-4" />
-                </Link>
-                <Link
-                  className="flex items-center gap-2 rounded-md border border-white/50 px-6 py-3 text-sm font-bold text-white hover:bg-white/10"
-                  href="/login"
-                >
-                  Track My Problem <ArrowRight className="h-4 w-4" />
-                </Link>
-              </div>
-
-              <dl className="mt-10 grid max-w-xl grid-cols-2 gap-x-8 gap-y-4 sm:grid-cols-4">
-                {statItems.map((item) => (
-                  <div key={item.label}>
-                    <dt
-                      className={`text-2xl font-black ${
-                        item.tone === "saffron"
-                          ? "text-[var(--saffron)]"
-                          : "text-white"
-                      }`}
-                    >
-                      {item.value}
-                    </dt>
-                    <dd className="text-xs font-semibold text-white/75">
-                      {item.label}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-            </div>
-
-            {/* Sign-in card */}
-            <div className="mx-auto w-full max-w-md self-start rounded-2xl bg-[var(--panel)] p-6 text-[var(--foreground)] shadow-2xl">
-              <h2 className="text-xl font-black text-[var(--ink)]">
-                Welcome to Samadhan
-              </h2>
-              <p className="text-sm text-[var(--muted)]">Sign in to continue</p>
-
-              <div className="mt-4 flex gap-4 border-b border-[var(--border)] text-sm font-semibold">
-                {SIGN_IN_TABS.map((tab) => (
-                  <button
-                    className={`-mb-px border-b-2 pb-2 ${
-                      role === tab.key
-                        ? "border-[var(--saffron)] text-[var(--ink)]"
-                        : "border-transparent text-[var(--muted)] hover:text-[var(--ink)]"
-                    }`}
-                    key={tab.key}
-                    onClick={() => setRole(tab.key)}
-                    type="button"
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-
-              <label className="mt-4 block text-sm font-semibold">
-                Email address
-                <input
-                  className="mt-1.5 w-full rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2.5 text-sm outline-none focus:border-[var(--accent)]"
-                  onChange={(e) => setContact(e.target.value)}
-                  placeholder="you@example.com"
-                  type="email"
-                  value={contact}
-                />
-              </label>
-              <p className="mt-1 text-xs text-[var(--muted)]">
-                We&apos;ll send a one-time code to verify.
-              </p>
-
+          <div className="relative mx-auto max-w-7xl px-5 py-16 lg:py-20">
+            <h1 className="max-w-2xl text-4xl leading-[1.05] font-black tracking-tight drop-shadow-sm sm:text-5xl">
+              A Stronger{" "}
+              <span className="text-[var(--saffron)]">Jharkhand</span>
+              <br />
+              Through Solutions
+            </h1>
+            <p className="mt-5 max-w-lg text-base text-white/90 drop-shadow-sm">
+              An AI-powered platform that connects citizens, government,
+              universities, industry and students to solve real-world
+              problems.
+            </p>
+            <div className="mt-7 flex flex-wrap gap-3">
               <Link
-                className="mt-4 flex items-center justify-center gap-2 rounded-lg bg-[var(--accent)] py-3 text-sm font-bold text-white hover:bg-[var(--accent-strong)]"
-                href={
-                  contact
-                    ? `/login?email=${encodeURIComponent(contact)}`
-                    : "/login"
-                }
+                className="flex items-center gap-2 rounded-md bg-[var(--saffron)] px-6 py-3 text-sm font-bold text-white shadow-lg hover:bg-[var(--saffron-strong)]"
+                href="/signup"
               >
-                Continue <ArrowRight className="h-4 w-4" />
+                Report a Problem <ArrowRight className="h-4 w-4" />
               </Link>
-
-              <div className="my-4 flex items-center gap-3 text-xs text-[var(--muted)]">
-                <span className="h-px flex-1 bg-[var(--border)]" />
-                or
-                <span className="h-px flex-1 bg-[var(--border)]" />
-              </div>
-
               <Link
-                className="flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] py-3 text-sm font-bold hover:bg-[var(--panel-soft)]"
-                href={`/signup?role=${role}`}
+                className="flex items-center gap-2 rounded-md border border-white bg-[var(--ink)]/80 px-6 py-3 text-sm font-bold text-white hover:bg-[var(--ink)]"
+                href="/login"
               >
-                Create a {SIGN_IN_TABS.find((t) => t.key === role)?.label ?? ""}{" "}
-                account
+                Track My Problem <ArrowRight className="h-4 w-4" />
               </Link>
-
-              <p className="mt-4 text-center text-sm text-[var(--muted)]">
-                New to Samadhan?{" "}
-                <Link
-                  className="font-bold text-[var(--accent)]"
-                  href={`/signup?role=${role}`}
-                >
-                  Create an account
-                </Link>
-              </p>
             </div>
           </div>
         </section>
 
-        {/* Audience strip */}
+        {/* Stats bar */}
         <section className="border-b border-[var(--border)] bg-[var(--panel)]">
-          <div className="mx-auto grid max-w-7xl grid-cols-2 divide-y divide-[var(--border)] px-5 sm:grid-cols-3 sm:divide-x sm:divide-y-0 lg:grid-cols-6">
+          <div className="mx-auto grid max-w-7xl grid-cols-2 gap-x-8 gap-y-6 px-5 py-8 sm:grid-cols-4">
+            {statItems.map((item) => (
+              <div key={item.label}>
+                <dt className={`text-3xl font-black ${item.tone}`}>
+                  {item.value}
+                </dt>
+                <dd className="text-xs font-semibold text-[var(--muted)]">
+                  {item.label}
+                </dd>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Audience strip */}
+        <section className="border-b border-[var(--border)] bg-[var(--panel-soft)]">
+          <div className="mx-auto grid max-w-7xl grid-cols-1 divide-y divide-[var(--border)] px-5 sm:grid-cols-3 sm:divide-x sm:divide-y-0 lg:grid-cols-5">
             {AUDIENCES.map((item) => {
               const Icon = item.icon;
               return (
@@ -392,7 +362,11 @@ export default function LandingPage() {
                   className="flex items-center gap-3 px-3 py-5"
                   key={item.title}
                 >
-                  <Icon className="h-6 w-6 shrink-0 text-[var(--saffron)]" />
+                  <span
+                    className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${item.bg}`}
+                  >
+                    <Icon className="h-5 w-5" />
+                  </span>
                   <div className="leading-tight">
                     <p className="text-sm font-bold text-[var(--ink)]">
                       {item.title}
