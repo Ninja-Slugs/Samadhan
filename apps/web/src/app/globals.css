@@ -3,15 +3,19 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: #f6f7f9;
-  --foreground: #0f172a;
+  --background: #f5f6f4;
+  --foreground: #0b2440;
   --panel: #ffffff;
-  --panel-soft: #eef1f5;
-  --border: rgb(15 23 42 / 0.1);
-  --muted: rgb(71 85 105 / 0.9);
-  --accent: #1f6feb;
-  --accent-strong: #1a5fce;
-  --success: #15803d;
+  --panel-soft: #eef1ee;
+  --border: rgb(11 36 64 / 0.12);
+  --muted: rgb(71 85 105 / 0.92);
+  /* Digital Jharkhand identity */
+  --accent: #0a7d3f;
+  --accent-strong: #086532;
+  --saffron: #ef6a17;
+  --saffron-strong: #d95c0e;
+  --ink: #0b2b4d;
+  --success: #0a7d3f;
   --warning: #b45309;
   --danger: #b91c1c;
   --radius: 0.625rem;
@@ -24,8 +28,11 @@
   --panel-soft: #1b2130;
   --border: rgb(255 255 255 / 0.1);
   --muted: rgb(148 163 184 / 0.9);
-  --accent: #4c8dff;
-  --accent-strong: #6aa1ff;
+  --accent: #2fae6b;
+  --accent-strong: #46c584;
+  --saffron: #ff8a3d;
+  --saffron-strong: #ff7a22;
+  --ink: #cdd9e8;
 }
 
 * {

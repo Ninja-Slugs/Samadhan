@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Alert, Button, Field, Input } from "@/components/ui/primitives";
 import { ApiError, apiRequest } from "@/lib/api/client";
 import { setSession } from "@/lib/session";
@@ -12,6 +12,13 @@ export default function LoginPage() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const email = new URLSearchParams(window.location.search).get("email");
+    if (email) {
+      setForm((current) => ({ ...current, email }));
+    }
+  }, []);
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();

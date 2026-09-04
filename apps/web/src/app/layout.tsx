@@ -15,18 +15,17 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  colorScheme: "light dark",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f6f7f9" },
-    { media: "(prefers-color-scheme: dark)", color: "#0b0f19" }
-  ]
+  colorScheme: "light",
+  themeColor: "#0a7d3f"
 };
 
+// Government portal: light by default. Dark is opt-in only (an explicit
+// "samadhan:theme" = "dark" set by a future in-app toggle), never inferred
+// from the OS setting.
 const THEME_INIT = `
 try {
   var stored = window.localStorage.getItem("samadhan:theme");
-  var dark = stored === "dark" || (stored !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
-  document.documentElement.classList.toggle("dark", dark);
+  document.documentElement.classList.toggle("dark", stored === "dark");
 } catch (e) {}
 `;
 

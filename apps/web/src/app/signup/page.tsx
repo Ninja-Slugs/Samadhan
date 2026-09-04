@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Alert,
   Button,
@@ -32,6 +32,22 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null);
   const [fields, setFields] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const role = params.get("role");
+    const email = params.get("email");
+    if (
+      role &&
+      ROLES.some((option) => option.value === role) &&
+      role !== "citizen"
+    ) {
+      setForm((current) => ({ ...current, role }));
+    }
+    if (email) {
+      setForm((current) => ({ ...current, email }));
+    }
+  }, []);
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
