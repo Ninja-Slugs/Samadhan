@@ -2,16 +2,20 @@ import { PrismaClient } from "@samadhan/database";
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
-// On shared/containerized hosting `os.cpus().length` often reports the host
-// machine's full core count, so Prisma's default pool size
-// (num_cpus * 2 + 1) can silently balloon and exhaust the Supabase pooler.
-// Force a small, known-safe limit.
-function withConnectionLimit(url: string, limit: number): string {
-  if (!url || url.includes("connection_limit=")) {
-    return url;
+// Tolerate a value pasted with surrounding quotes/whitespace in a hosting
+// panel's env editor, and cap the pool (containerized hosts over-report CPU
+// count, which would otherwise balloon Prisma's default pool and exhaust the
+// Supabase pooler). Validation of the URL itself is left to Prisma, which
+// does it lazily on first query - so `next build` never needs a live
+// DATABASE_URL.
+function resolveDatabaseUrl(): string {
+  const raw = (process.env.DATABASE_URL ?? "")
+    .trim()
+    .replace(/^["']|["']$/g, "");
+  if (!raw || raw.includes("connection_limit=")) {
+    return raw;
   }
-  const separator = url.includes("?") ? "&" : "?";
-  return `${url}${separator}connection_limit=${limit}`;
+  return `${raw}${raw.includes("?") ? "&" : "?"}connection_limit=5`;
 }
 
 // Cache on `global` in every environment: Next.js compiles route handlers
@@ -20,9 +24,7 @@ function withConnectionLimit(url: string, limit: number): string {
 export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
-    datasources: {
-      db: { url: withConnectionLimit(process.env.DATABASE_URL ?? "", 5) }
-    }
+    datasources: { db: { url: resolveDatabaseUrl() } }
   });
 
 globalForPrisma.prisma = prisma;
