@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import {
   Alert,
   Button,
@@ -200,6 +201,11 @@ export default function AdminReviewPage() {
                   >
                     Recompute priority
                   </Button>
+                  <Link href={`/admin/universities/${selected}`}>
+                    <Button type="button" variant="ghost">
+                      Find university matches
+                    </Button>
+                  </Link>
                 </div>
                 <p className="text-xs text-[var(--muted)]">
                   AI suggestions are advisory. Your decision and its reason are

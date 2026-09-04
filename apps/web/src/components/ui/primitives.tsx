@@ -121,9 +121,11 @@ export function StatusBadge({ status }: { status: string }) {
 
 export function Alert({
   tone = "info",
+  className,
   children
 }: {
   tone?: "info" | "error" | "success";
+  className?: string;
   children: ReactNode;
 }) {
   return (
@@ -134,7 +136,8 @@ export function Alert({
         tone === "error" &&
           "border-[var(--danger)]/40 bg-[var(--danger)]/10 text-[var(--danger)]",
         tone === "success" &&
-          "border-[var(--success)]/40 bg-[var(--success)]/10 text-[var(--success)]"
+          "border-[var(--success)]/40 bg-[var(--success)]/10 text-[var(--success)]",
+        className
       )}
     >
       {children}
