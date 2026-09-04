@@ -11,6 +11,7 @@ import {
   Select
 } from "@/components/ui/primitives";
 import { ApiError, apiRequest } from "@/lib/api/client";
+import { setSession } from "@/lib/session";
 
 const ROLES = [
   { value: "citizen", label: "Citizen - report problems" },
@@ -55,18 +56,23 @@ export default function SignupPage() {
     setError(null);
     setFields({});
     try {
-      await apiRequest("/auth/signup", {
+      const result = await apiRequest<{
+        accessToken: string;
+        refreshToken: string;
+        user: { role: string };
+      }>("/auth/signup", {
         method: "POST",
         auth: false,
         body: {
           fullName: form.fullName,
           email: form.email,
-          password: form.password,
+          password: form.password || undefined,
           role: form.role,
           district: form.district || undefined
         }
       });
-      router.push(`/verify-email?email=${encodeURIComponent(form.email)}`);
+      setSession(result.accessToken, result.refreshToken);
+      router.push(result.user.role === "admin" ? "/admin" : "/dashboard");
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -83,6 +89,7 @@ export default function SignupPage() {
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-12">
       <h1 className="text-2xl font-black">Create your SAMADHAN account</h1>
       <p className="mt-2 text-sm text-[var(--muted)]">
+        Just your name and email — no verification needed to get started.
         Government and admin accounts are provisioned separately.
       </p>
       <form className="mt-6 grid gap-4" onSubmit={onSubmit}>
@@ -104,12 +111,11 @@ export default function SignupPage() {
         </Field>
         <Field
           label="Password"
-          hint="At least 8 characters."
+          hint="Optional. Set one if you want to log back in later — you're signed in right away either way."
           error={fields.password}
         >
           <Input
             type="password"
-            required
             minLength={8}
             value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })}

@@ -33,10 +33,6 @@ export default function LoginPage() {
       setSession(result.accessToken, result.refreshToken);
       router.push(result.user.role === "admin" ? "/admin" : "/dashboard");
     } catch (err) {
-      if (err instanceof ApiError && err.code === "email_not_verified") {
-        router.push(`/verify-email?email=${encodeURIComponent(form.email)}`);
-        return;
-      }
       setError(err instanceof ApiError ? err.message : "Login failed.");
     } finally {
       setSubmitting(false);

@@ -1,20 +1,12 @@
 import type { AppRole, User } from "@samadhan/database";
 import { getEnv } from "../env";
 import { AppException, HttpStatus } from "../http";
-import { sendMail } from "../mail/mailer";
 import { prisma } from "../prisma";
 import { signAccessToken } from "./jwt";
 import { hashPassword, verifyPassword } from "./password.util";
-import {
-  addDuration,
-  generateOpaqueToken,
-  generateOtp,
-  hashOpaqueToken
-} from "./token.util";
+import { addDuration, generateOpaqueToken, hashOpaqueToken } from "./token.util";
 
 const EMAIL_PROVIDER = "email";
-const OTP_TTL = "15m";
-const MAX_OTP_ATTEMPTS = 5;
 
 // Self-service signup can never mint an admin. Government/admin accounts are
 // provisioned out of band (docs/DATA_AND_SECURITY.md - "Admin access is
@@ -60,14 +52,17 @@ class AuthService {
   private readonly prisma = prisma;
   private readonly refreshTtl = getEnv("JWT_REFRESH_TTL", "30d");
 
-  async signup(input: {
-    email: string;
-    password: string;
-    fullName: string;
-    role?: AppRole;
-    district?: string;
-    organizationName?: string;
-  }): Promise<{ email: string }> {
+  async signup(
+    input: {
+      email: string;
+      password?: string;
+      fullName: string;
+      role?: AppRole;
+      district?: string;
+      organizationName?: string;
+    },
+    meta?: SessionMeta
+  ): Promise<{ user: ReturnType<typeof toPublicUser> } & TokenPair> {
     const email = normalizeEmail(input.email);
     const role = input.role ?? "citizen";
 
@@ -95,7 +90,13 @@ class AuthService {
       );
     }
 
-    const passwordHash = await hashPassword(input.password);
+    // No verification step for now: accounts (including throwaway/temp
+    // emails) are created and signed in immediately from just a name and
+    // email address. A password is optional; when omitted we still set one
+    // internally so the account can also use password login later.
+    const passwordHash = await hashPassword(
+      input.password ?? generateOpaqueToken()
+    );
     const user = await this.prisma.user.create({
       data: {
         email,
@@ -103,6 +104,7 @@ class AuthService {
         role,
         district: input.district?.trim() || null,
         organizationName: input.organizationName?.trim() || null,
+        emailVerifiedAt: new Date(),
         authAccounts: {
           create: {
             provider: EMAIL_PROVIDER,
@@ -113,76 +115,8 @@ class AuthService {
       }
     });
 
-    await this.issueVerificationOtp(user.id, email);
-    return { email };
-  }
-
-  async resendVerification(email: string): Promise<{ email: string }> {
-    const normalized = normalizeEmail(email);
-    const user = await this.prisma.user.findUnique({
-      where: { email: normalized }
-    });
-    // Do not reveal whether the address exists.
-    if (user && !user.emailVerifiedAt) {
-      await this.issueVerificationOtp(user.id, normalized);
-    }
-    return { email: normalized };
-  }
-
-  async verifyEmail(email: string, code: string, meta?: SessionMeta) {
-    const normalized = normalizeEmail(email);
-    const user = await this.prisma.user.findUnique({
-      where: { email: normalized }
-    });
-    if (!user) {
-      throw this.invalidCode();
-    }
-    if (user.emailVerifiedAt) {
-      throw new AppException(
-        HttpStatus.CONFLICT,
-        "already_verified",
-        "This email address is already verified."
-      );
-    }
-
-    const token = await this.prisma.emailVerificationToken.findFirst({
-      where: { userId: user.id, consumedAt: null },
-      orderBy: { createdAt: "desc" }
-    });
-    if (!token || token.expiresAt < new Date()) {
-      throw this.invalidCode();
-    }
-    if (token.attempts >= MAX_OTP_ATTEMPTS) {
-      throw new AppException(
-        HttpStatus.TOO_MANY_REQUESTS,
-        "too_many_attempts",
-        "Too many incorrect attempts. Request a new code."
-      );
-    }
-    if (token.tokenHash !== hashOpaqueToken(code)) {
-      await this.prisma.emailVerificationToken.update({
-        where: { id: token.id },
-        data: { attempts: { increment: 1 } }
-      });
-      throw this.invalidCode();
-    }
-
-    await this.prisma.$transaction([
-      this.prisma.emailVerificationToken.update({
-        where: { id: token.id },
-        data: { consumedAt: new Date() }
-      }),
-      this.prisma.user.update({
-        where: { id: user.id },
-        data: { emailVerifiedAt: new Date() }
-      })
-    ]);
-
-    const verified = await this.prisma.user.findUniqueOrThrow({
-      where: { id: user.id }
-    });
-    const tokens = await this.issueSession(verified, meta);
-    return { user: toPublicUser(verified), ...tokens };
+    const tokens = await this.issueSession(user, meta);
+    return { user: toPublicUser(user), ...tokens };
   }
 
   async login(email: string, password: string, meta?: SessionMeta) {
@@ -212,13 +146,6 @@ class AuthService {
         HttpStatus.FORBIDDEN,
         "account_disabled",
         "This account has been disabled."
-      );
-    }
-    if (!account.user.emailVerifiedAt) {
-      throw new AppException(
-        HttpStatus.FORBIDDEN,
-        "email_not_verified",
-        "Please verify your email address before logging in."
       );
     }
 
@@ -305,36 +232,6 @@ class AuthService {
     };
   }
 
-  private async issueVerificationOtp(
-    userId: string,
-    email: string
-  ): Promise<void> {
-    await this.prisma.emailVerificationToken.updateMany({
-      where: { userId, consumedAt: null },
-      data: { consumedAt: new Date() }
-    });
-    const code = generateOtp();
-    await this.prisma.emailVerificationToken.create({
-      data: {
-        userId,
-        tokenHash: hashOpaqueToken(code),
-        expiresAt: addDuration(new Date(), OTP_TTL)
-      }
-    });
-    await sendMail({
-      to: email,
-      subject: "Your SAMADHAN verification code",
-      text: `Your verification code is ${code}. It expires in 15 minutes.`
-    });
-  }
-
-  private invalidCode(): AppException {
-    return new AppException(
-      HttpStatus.BAD_REQUEST,
-      "invalid_or_expired_code",
-      "This code is invalid or has expired."
-    );
-  }
 }
 
 export const authService = new AuthService();
