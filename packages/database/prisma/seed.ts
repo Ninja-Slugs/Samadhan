@@ -1,4 +1,22 @@
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
 import { PrismaClient } from "@prisma/client";
+
+// `prisma db seed` loads .env for us, but a bare `node prisma/seed.ts` does
+// not - resolve the nearest .env (package dir, then repo root) so both work.
+if (!process.env.DATABASE_URL) {
+  const here = dirname(fileURLToPath(import.meta.url));
+  for (const candidate of [
+    resolve(here, "../.env"),
+    resolve(here, "../../../.env")
+  ]) {
+    if (existsSync(candidate)) {
+      process.loadEnvFile(candidate);
+      break;
+    }
+  }
+}
 
 const prisma = new PrismaClient();
 
