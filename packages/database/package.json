@@ -17,10 +17,7 @@
     "seed": "node --experimental-strip-types prisma/seed.ts"
   },
   "dependencies": {
-    "@prisma/client": "^6.2.1"
-  },
-  "devDependencies": {
-    "prisma": "^6.2.1",
-    "typescript": "^5.7.3"
+    "@prisma/client": "^6.2.1",
+    "prisma": "^6.2.1"
   }
 }

@@ -14,6 +14,12 @@ const nextConfig: NextConfig = {
   },
   // Re-enable once every internal route in the nav exists.
   typedRoutes: false,
+  // ESLint deps are devDependencies and are not installed in the
+  // production build on Hostinger; CI (.github/workflows/ci.yml) runs the
+  // lint separately on every push, so skipping it here is safe.
+  eslint: {
+    ignoreDuringBuilds: true
+  },
   // Hostinger's container over-reports its CPU count, which makes
   // `next build`'s static-generation phase spawn one OS process per
   // inferred worker and can trip the account's process ceiling.
