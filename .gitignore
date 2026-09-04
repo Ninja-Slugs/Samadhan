@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+apps/**/out/
+*.tsbuildinfo
+
+# Production builds
+dist/
+build/
+
+# Prisma generated client
+packages/database/generated/
+
+# Environment
+.env
+.env.*
+!.env.example
+!apps/**/.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Testing and coverage
+coverage/
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.obsidian/
+
+# Local tooling config
+.claude/
+.codex-remote-attachments/
+
+# Docker
+.docker-cache/

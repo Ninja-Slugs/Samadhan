@@ -1,0 +1,48 @@
+{
+  "name": "samadhan",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SAMADHAN - From Citizen Problems to Real-World Solutions.",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=22.13.0",
+    "npm": ">=10.9.0"
+  },
+  "packageManager": "npm@10.9.2",
+  "workspaces": [
+    "apps/web",
+    "packages/database"
+  ],
+  "scripts": {
+    "dev": "npm run build --workspace=@samadhan/database && npm --workspace @samadhan/web run dev",
+    "build": "npm run build --workspace=@samadhan/database && npm --workspace @samadhan/web run build",
+    "postbuild": "node scripts/sync-next-standalone-assets.mjs",
+    "start": "node server.js",
+    "start:next": "npm --workspace @samadhan/web run start",
+    "db:generate": "npm run db:generate --workspace=@samadhan/database",
+    "db:migrate": "npm run db:migrate --workspace=@samadhan/database",
+    "db:seed": "npm run db:seed --workspace=@samadhan/database",
+    "lint": "npm --workspace @samadhan/web run lint",
+    "typecheck": "npm --workspace @samadhan/web run typecheck",
+    "format": "prettier . --write",
+    "format:check": "prettier . --check",
+    "verify": "npm run lint && npm run typecheck && npm run format:check && npm run build",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,mjs,cjs,json,md,css,yml,yaml}": [
+      "prettier --write"
+    ],
+    "apps/web/**/*.{js,jsx,ts,tsx}": [
+      "eslint --max-warnings=0 --no-warn-ignored"
+    ]
+  },
+  "devDependencies": {
+    "eslint": "9.39.4",
+    "eslint-config-prettier": "10.1.8",
+    "husky": "9.1.7",
+    "lint-staged": "16.4.0",
+    "prettier": "3.9.1",
+    "prettier-plugin-tailwindcss": "0.8.0"
+  }
+}
