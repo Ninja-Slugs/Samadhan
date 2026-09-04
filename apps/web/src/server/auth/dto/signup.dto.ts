@@ -19,10 +19,11 @@ export class SignupDto {
   @IsEmail()
   email!: string;
 
+  @IsOptional()
   @IsString()
   @MinLength(8)
   @MaxLength(200)
-  password!: string;
+  password?: string;
 
   @IsString()
   @MinLength(2)
