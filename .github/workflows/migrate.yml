@@ -1,0 +1,55 @@
+name: Migrate
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: {}
+
+concurrency:
+  group: migrate-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy migrations
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22.13.0
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Deploy migrations
+        run: |
+          # Cap this job to a single pooled connection and retry with backoff
+          # so a transient pool-exhaustion window (Hostinger's deploy hook can
+          # start the new app code at roughly the same moment) resolves
+          # itself instead of needing a manual re-run.
+          if [[ "$DATABASE_URL" == *"?"* ]]; then
+            export DATABASE_URL="${DATABASE_URL}&connection_limit=1&pool_timeout=15"
+          else
+            export DATABASE_URL="${DATABASE_URL}?connection_limit=1&pool_timeout=15"
+          fi
+
+          attempt=1
+          max_attempts=6
+          until npx prisma migrate deploy --schema=packages/database/prisma/schema.prisma; do
+            if [ "$attempt" -ge "$max_attempts" ]; then
+              echo "::error::prisma migrate deploy failed after $attempt attempts."
+              exit 1
+            fi
+            wait_seconds=$((attempt * 15))
+            echo "Migration attempt $attempt failed - retrying in ${wait_seconds}s..."
+            sleep "$wait_seconds"
+            attempt=$((attempt + 1))
+          done
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
