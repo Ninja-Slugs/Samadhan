@@ -1,0 +1,573 @@
+// SAMADHAN database schema.
+//
+// Design rules (docs/adr/0002-database.md):
+//  - cuid() primary keys; a separate human-facing `publicId` where citizens
+//    or partners need to quote an identifier.
+//  - snake_case columns via @map, plural snake_case tables via @@map.
+//  - created_at / updated_at on every mutable table.
+//  - AI output is stored in its own tables, never overwriting the
+//    citizen-submitted source fields.
+//  - Status columns are enums so the state machine has fixed edges.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum AppRole {
+  citizen
+  admin
+  university_admin
+  student
+  faculty
+  industry
+}
+
+enum ProblemStatus {
+  submitted
+  under_review
+  validated
+  prioritized
+  assigned
+  in_progress
+  resolved
+  closed
+  rejected
+  duplicate
+  archived
+}
+
+enum ProblemSeverity {
+  low
+  medium
+  high
+  critical
+}
+
+enum UrgencyLevel {
+  routine
+  elevated
+  urgent
+  emergency
+}
+
+enum MediaType {
+  image
+  video
+  document
+  voice
+}
+
+enum AiAnalysisStatus {
+  pending
+  completed
+  failed
+}
+
+enum ChallengeStatus {
+  draft
+  open
+  interested
+  accepted
+  rejected
+  withdrawn
+}
+
+enum ProjectStage {
+  research
+  solution_design
+  prototype
+  testing
+  pilot
+  deployment
+  impact_measurement
+}
+
+enum ProjectStatus {
+  draft
+  submitted
+  approved
+  active
+  review
+  completed
+  cancelled
+}
+
+// ---------------------------------------------------------------------------
+// Identity
+// ---------------------------------------------------------------------------
+
+model User {
+  id               String    @id @default(cuid())
+  email            String    @unique
+  fullName         String    @map("full_name")
+  role             AppRole   @default(citizen)
+  phone            String?
+  organizationName String?   @map("organization_name")
+  district         String?
+  city             String?
+  state            String?
+  avatarUrl        String?   @map("avatar_url")
+  bio              String?
+  isActive         Boolean   @default(true) @map("is_active")
+  emailVerifiedAt  DateTime? @map("email_verified_at")
+  lastSeenAt       DateTime? @map("last_seen_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  authAccounts            AuthAccount[]
+  sessions                Session[]
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens     PasswordResetToken[]
+
+  reportedProblems Problem[]        @relation("ProblemCitizen")
+  verifiedProblems Problem[]        @relation("ProblemVerifier")
+  uploadedMedia    ProblemMedia[]
+  projectMembers   ProjectMember[]
+  projectUpdates   ProjectUpdate[]
+  notifications    Notification[]
+  activityLogs     ActivityLog[]
+  university       University?      @relation(fields: [universityId], references: [id])
+  universityId     String?         @map("university_id")
+
+  @@index([role])
+  @@index([district])
+  @@map("users")
+}
+
+model AuthAccount {
+  id                String   @id @default(cuid())
+  userId            String   @map("user_id")
+  provider          String
+  providerAccountId String   @map("provider_account_id")
+  passwordHash      String?  @map("password_hash")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("auth_accounts")
+}
+
+model Session {
+  id               String    @id @default(cuid())
+  userId           String    @map("user_id")
+  refreshTokenHash String    @unique @map("refresh_token_hash")
+  userAgent        String?   @map("user_agent")
+  ipAddress        String?   @map("ip_address")
+  expiresAt        DateTime  @map("expires_at")
+  revokedAt        DateTime? @map("revoked_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model EmailVerificationToken {
+  id         String    @id @default(cuid())
+  userId     String    @map("user_id")
+  tokenHash  String    @map("token_hash")
+  expiresAt  DateTime  @map("expires_at")
+  consumedAt DateTime? @map("consumed_at")
+  attempts   Int       @default(0)
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("email_verification_tokens")
+}
+
+model PasswordResetToken {
+  id         String    @id @default(cuid())
+  userId     String    @map("user_id")
+  tokenHash  String    @map("token_hash")
+  expiresAt  DateTime  @map("expires_at")
+  consumedAt DateTime? @map("consumed_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+// ---------------------------------------------------------------------------
+// Problem taxonomy + intake
+// ---------------------------------------------------------------------------
+
+model ProblemCategory {
+  id                    String   @id @default(cuid())
+  parentId              String?  @map("parent_id")
+  name                  String
+  slug                  String   @unique
+  description           String?
+  defaultPriorityWeight Float    @default(1) @map("default_priority_weight")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  parent   ProblemCategory?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children ProblemCategory[] @relation("CategoryTree")
+  problems Problem[]
+  challenges InnovationChallenge[]
+
+  @@index([parentId])
+  @@map("problem_categories")
+}
+
+model Problem {
+  id             String           @id @default(cuid())
+  publicId       String           @unique @map("public_id")
+  citizenId      String           @map("citizen_id")
+  title          String
+  description    String
+  categoryId     String?          @map("category_id")
+  status         ProblemStatus    @default(submitted)
+  severity       ProblemSeverity?
+  urgencyLevel   UrgencyLevel?    @map("urgency_level")
+  peopleAffected Int?             @map("people_affected")
+  priorityScore  Float?           @map("priority_score")
+  district       String?
+  city           String?
+  state          String?
+  address        String?
+  gpsLat         Float?           @map("gps_lat")
+  gpsLng         Float?           @map("gps_lng")
+  submittedSource String          @default("web") @map("submitted_source")
+  rejectionReason String?         @map("rejection_reason")
+  verifiedById   String?          @map("verified_by")
+  verifiedAt     DateTime?        @map("verified_at")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  citizen    User             @relation("ProblemCitizen", fields: [citizenId], references: [id])
+  verifiedBy User?            @relation("ProblemVerifier", fields: [verifiedById], references: [id])
+  category   ProblemCategory? @relation(fields: [categoryId], references: [id])
+
+  media       ProblemMedia[]
+  aiAnalysis  ProblemAiAnalysis?
+  priority    PriorityScore?
+  duplicateOf ProblemDuplicate[] @relation("DuplicateSource")
+  similarTo   ProblemDuplicate[] @relation("DuplicateTarget")
+  challenge   InnovationChallenge?
+  statusEvents ProblemStatusEvent[]
+
+  @@index([status])
+  @@index([categoryId])
+  @@index([district])
+  @@index([citizenId])
+  @@index([priorityScore(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+  @@map("problems")
+}
+
+model ProblemMedia {
+  id           String    @id @default(cuid())
+  problemId    String    @map("problem_id")
+  mediaType    MediaType @map("media_type")
+  storageBucket String   @map("storage_bucket")
+  storagePath  String    @map("storage_path")
+  fileName     String    @map("file_name")
+  mimeType     String    @map("mime_type")
+  fileSize     Int       @map("file_size")
+  uploadedById String    @map("uploaded_by")
+  caption      String?
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  problem    Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  uploadedBy User    @relation(fields: [uploadedById], references: [id])
+
+  @@index([problemId])
+  @@map("problem_media")
+}
+
+model ProblemAiAnalysis {
+  id                    String           @id @default(cuid())
+  problemId             String           @unique @map("problem_id")
+  status                AiAnalysisStatus @default(pending)
+  modelName             String?          @map("model_name")
+  inputHash             String?          @map("input_hash")
+  categoryGuess         String?          @map("category_guess")
+  subcategoryGuess      String?          @map("subcategory_guess")
+  severityGuess         String?          @map("severity_guess")
+  prioritySuggestion    Float?           @map("priority_suggestion")
+  requiredExpertise     String[]         @default([]) @map("required_expertise")
+  suggestedSolutionAreas String[]        @default([]) @map("suggested_solution_areas")
+  summary               String?
+  reasons               String[]         @default([])
+  uncertainties         String[]         @default([])
+  confidenceScore       Float?           @map("confidence_score")
+  needsReview           Boolean          @default(true) @map("needs_review")
+  analysisJson          Json?            @map("analysis_json")
+  errorMessage          String?          @map("error_message")
+  createdAt             DateTime         @default(now()) @map("created_at")
+  updatedAt             DateTime         @updatedAt @map("updated_at")
+
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@map("problem_ai_analysis")
+}
+
+model ProblemDuplicate {
+  id               String    @id @default(cuid())
+  problemId        String    @map("problem_id")
+  similarProblemId String    @map("similar_problem_id")
+  similarityScore  Float     @map("similarity_score")
+  textScore        Float?    @map("text_score")
+  locationScore    Float?    @map("location_score")
+  categoryScore    Float?    @map("category_score")
+  dateScore        Float?    @map("date_score")
+  reviewStatus     String    @default("pending") @map("review_status")
+  reviewedById     String?   @map("reviewed_by")
+  reviewedAt       DateTime? @map("reviewed_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  problem        Problem @relation("DuplicateSource", fields: [problemId], references: [id], onDelete: Cascade)
+  similarProblem Problem @relation("DuplicateTarget", fields: [similarProblemId], references: [id], onDelete: Cascade)
+
+  @@unique([problemId, similarProblemId])
+  @@index([similarityScore(sort: Desc)])
+  @@map("problem_duplicates")
+}
+
+model PriorityScore {
+  id                 String   @id @default(cuid())
+  problemId          String   @unique @map("problem_id")
+  severityWeight     Float    @default(0) @map("severity_weight")
+  urgencyWeight      Float    @default(0) @map("urgency_weight")
+  populationWeight   Float    @default(0) @map("population_weight")
+  duplicateWeight    Float    @default(0) @map("duplicate_weight")
+  geographicWeight   Float    @default(0) @map("geographic_weight")
+  socialImpactWeight Float    @default(0) @map("social_impact_weight")
+  finalScore         Float    @map("final_score")
+  explanation        Json
+  manualOverride     Boolean  @default(false) @map("manual_override")
+  calculatedById     String?  @map("calculated_by")
+  calculatedAt       DateTime @default(now()) @map("calculated_at")
+
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@index([finalScore(sort: Desc)])
+  @@map("priority_scores")
+}
+
+model ProblemStatusEvent {
+  id         String        @id @default(cuid())
+  problemId  String        @map("problem_id")
+  fromStatus ProblemStatus? @map("from_status")
+  toStatus   ProblemStatus @map("to_status")
+  actorId    String?       @map("actor_id")
+  note       String?
+  createdAt  DateTime      @default(now()) @map("created_at")
+
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@index([problemId])
+  @@map("problem_status_events")
+}
+
+// ---------------------------------------------------------------------------
+// Universities + challenges + projects
+// ---------------------------------------------------------------------------
+
+model University {
+  id             String   @id @default(cuid())
+  name           String   @unique
+  type           String?
+  website        String?
+  email          String?
+  phone          String?
+  state          String?
+  district       String?
+  city           String?
+  address        String?
+  latitude       Float?
+  longitude      Float?
+  capacityScore  Float    @default(50) @map("capacity_score")
+  description    String?
+  status         String   @default("active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  members     User[]
+  expertise   UniversityExpertise[]
+  challenges  InnovationChallenge[]
+  projects    Project[]
+
+  @@index([district])
+  @@index([capacityScore(sort: Desc)])
+  @@map("universities")
+}
+
+model UniversityExpertise {
+  id           String   @id @default(cuid())
+  universityId String   @map("university_id")
+  expertiseTag String   @map("expertise_tag")
+  department   String?
+  labName      String?  @map("lab_name")
+  weight       Float    @default(1)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  university University @relation(fields: [universityId], references: [id], onDelete: Cascade)
+
+  @@index([universityId])
+  @@index([expertiseTag])
+  @@map("university_expertise")
+}
+
+model InnovationChallenge {
+  id                 String          @id @default(cuid())
+  problemId          String          @unique @map("problem_id")
+  title              String
+  problemSummary     String          @map("problem_summary")
+  location           String?
+  categoryId         String?         @map("category_id")
+  priorityScore      Float?          @map("priority_score")
+  requiredExpertise  String[]        @default([]) @map("required_expertise")
+  expectedOutcomes   Json?           @map("expected_outcomes")
+  suggestedTimeline  String?         @map("suggested_timeline")
+  estimatedBudget    Float?          @map("estimated_budget")
+  successCriteria    Json?           @map("success_criteria")
+  status             ChallengeStatus @default(draft)
+  assignedUniversityId String?       @map("assigned_university_id")
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+
+  problem            Problem          @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  category           ProblemCategory? @relation(fields: [categoryId], references: [id])
+  assignedUniversity University?      @relation(fields: [assignedUniversityId], references: [id])
+  project            Project?
+
+  @@index([status])
+  @@index([priorityScore(sort: Desc)])
+  @@map("innovation_challenges")
+}
+
+model Project {
+  id                 String        @id @default(cuid())
+  challengeId        String        @unique @map("challenge_id")
+  universityId       String?       @map("university_id")
+  title              String
+  currentStage       ProjectStage  @default(research) @map("current_stage")
+  status             ProjectStatus @default(draft)
+  progressPercentage Float         @default(0) @map("progress_percentage")
+  startDate          DateTime?     @map("start_date")
+  endDate            DateTime?     @map("end_date")
+  publicVisibility   Boolean       @default(true) @map("public_visibility")
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime      @updatedAt @map("updated_at")
+
+  challenge  InnovationChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  university University?          @relation(fields: [universityId], references: [id])
+  members    ProjectMember[]
+  milestones ProjectMilestone[]
+  updates    ProjectUpdate[]
+
+  @@index([status])
+  @@index([currentStage])
+  @@map("projects")
+}
+
+model ProjectMember {
+  id         String   @id @default(cuid())
+  projectId  String   @map("project_id")
+  userId     String   @map("user_id")
+  memberRole String   @map("member_role")
+  isActive   Boolean  @default(true) @map("is_active")
+  assignedAt DateTime @default(now()) @map("assigned_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@index([userId])
+  @@map("project_members")
+}
+
+model ProjectMilestone {
+  id                 String    @id @default(cuid())
+  projectId          String    @map("project_id")
+  title              String
+  description        String?
+  orderNo            Int       @map("order_no")
+  status             String    @default("pending")
+  dueDate            DateTime? @map("due_date")
+  completedAt        DateTime? @map("completed_at")
+  progressPercentage Float     @default(0) @map("progress_percentage")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, orderNo])
+  @@map("project_milestones")
+}
+
+model ProjectUpdate {
+  id         String   @id @default(cuid())
+  projectId  String   @map("project_id")
+  updateType String   @default("progress") @map("update_type")
+  summary    String
+  details    String?
+  postedById String   @map("posted_by")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  project  Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  postedBy User    @relation(fields: [postedById], references: [id])
+
+  @@index([projectId, createdAt(sort: Desc)])
+  @@map("project_updates")
+}
+
+// ---------------------------------------------------------------------------
+// Engagement + audit
+// ---------------------------------------------------------------------------
+
+model Notification {
+  id                String    @id @default(cuid())
+  recipientId       String    @map("recipient_id")
+  type              String
+  title             String
+  body              String?
+  entityType        String?   @map("entity_type")
+  entityId          String?   @map("entity_id")
+  readAt            DateTime? @map("read_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  recipient User @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([recipientId, createdAt(sort: Desc)])
+  @@index([recipientId, readAt])
+  @@map("notifications")
+}
+
+model ActivityLog {
+  id         String   @id @default(cuid())
+  actorId    String?  @map("actor_id")
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  metadata   Json?
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  actor User? @relation(fields: [actorId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@index([createdAt(sort: Desc)])
+  @@map("activity_logs")
+}
