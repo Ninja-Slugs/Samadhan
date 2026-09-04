@@ -15,6 +15,7 @@ The first document to read before working on SAMADHAN.
 - [docs/API.md](docs/API.md) - API conventions and endpoint groups.
 - [docs/DATA_AND_SECURITY.md](docs/DATA_AND_SECURITY.md) - data classes, authorization, uploads, audit.
 - [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) - branching, workflow, PR checklist.
+- [docs/deployment.md](docs/deployment.md) - Hostinger + Supabase runbook, CI migrations, env vars.
 - [packages/database/prisma/schema.prisma](packages/database/prisma/schema.prisma) - the schema source of truth.
 
 ## Delivery

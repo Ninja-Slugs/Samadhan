@@ -12,16 +12,18 @@ This directory contains the working documentation for SAMADHAN, a civic problem-
 
 ## Document Map
 
-| Document                                                       | Purpose                                                                  |
-| -------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| [Technical Documentation](SAMADHAN_Technical_Documentation.md) | Full product, UX, API, data, security, and deployment specification      |
-| [Architecture](ARCHITECTURE.md)                                | Runtime boundaries, ownership, data flow, and architectural decisions    |
-| [Roadmap](ROADMAP.md)                                          | Phased delivery plan and definition of done                              |
-| [Progress](PROGRESS.md)                                        | Current implementation status, decisions, risks, and next actions        |
-| [AI Rules](AI_RULES.md)                                        | Safety, privacy, explainability, and operational rules for AI            |
-| [API Guide](API.md)                                            | API conventions, endpoint groups, validation, and error handling         |
-| [Data and Security](DATA_AND_SECURITY.md)                      | Data classification, authorization, RLS, uploads, audit, and backups     |
-| [Contributing](CONTRIBUTING.md)                                | Branching, implementation workflow, testing, and documentation standards |
+| Document                                                       | Purpose                                                                     |
+| -------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| [Technical Documentation](SAMADHAN_Technical_Documentation.md) | Full product, UX, API, data, security, and deployment specification         |
+| [Architecture](ARCHITECTURE.md)                                | Runtime boundaries, ownership, data flow, and architectural decisions       |
+| [Roadmap](ROADMAP.md)                                          | Phased delivery plan and definition of done                                 |
+| [Progress](PROGRESS.md)                                        | Current implementation status, decisions, risks, and next actions           |
+| [AI Rules](AI_RULES.md)                                        | Safety, privacy, explainability, and operational rules for AI               |
+| [API Guide](API.md)                                            | API conventions, endpoint groups, validation, and error handling            |
+| [Data and Security](DATA_AND_SECURITY.md)                      | Data classification, authorization, RLS, uploads, audit, and backups        |
+| [Contributing](CONTRIBUTING.md)                                | Branching, implementation workflow, testing, and documentation standards    |
+| [Deployment Runbook](deployment.md)                            | Hostinger + Supabase setup, CI migrations, env vars, first-deploy checklist |
+| [ADRs](adr/README.md)                                          | Architecture decision records (start at 0001)                               |
 
 ## Maintenance Rules
 
